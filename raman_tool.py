@@ -6,6 +6,7 @@ from tkinter import filedialog, messagebox, scrolledtext
 import os
 
 # ========= SETTINGS =========
+VERSION = "v1.0"
 LASER_NM = 532
 CARBON_RANGE = (1000, 3200)
 # ============================
@@ -31,7 +32,7 @@ def fit_band(x, y, win):
         x0, gamma, A, c = popt
         fwhm = abs(gamma)
 
-        # Asymmetry calculation from your original code
+        # Asymmetry calculation (Original Logic)
         y_peak = lorentz(x0, x0, gamma, A, c)
         hm = c + (y_peak - c) / 2
         left, right = xr[xr < x0], xr[xr > x0]
@@ -65,7 +66,7 @@ def classify_from_rules(D, G, TD):
             type_text = "highly disordered / amorphous-like sp² carbon"
 
     if G:
-        if G["pos"] < 1580: notes.append("G band downshifted (disorder/strain/doping).")
+        if G["pos"] < 1580: notes.append("G band downshifted.")
         if G["fwhm"] > 30: notes.append("G band significantly broadened.")
     if D:
         notes.append(f"D band present (ID/IG ≈ {ID_IG:.2f})" if not np.isnan(ID_IG) else "D band present.")
@@ -77,16 +78,18 @@ def classify_from_rules(D, G, TD):
 class RamanApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Raman Pro Analyzer")
-        self.root.geometry("600x450")
+        self.root.title(f"Raman Pro Analyzer {VERSION}")
+        self.root.geometry("600x480")
         
-        tk.Label(root, text="Raman Analysis Tool", font=("Arial", 16, "bold")).pack(pady=10)
+        tk.Label(root, text=f"Raman Analysis Tool {VERSION}", font=("Arial", 16, "bold")).pack(pady=10)
         self.btn = tk.Button(root, text="Select Files & Process", command=self.start, bg="#2196F3", fg="white", font=("Arial", 11, "bold"), padx=20, pady=10)
         self.btn.pack(pady=10)
         
         tk.Label(root, text="Activity Log:").pack(anchor="w", padx=25)
         self.log = scrolledtext.ScrolledText(root, width=65, height=15)
         self.log.pack(padx=20, pady=5)
+        
+        tk.Label(root, text="Results save in the same folder as data.", font=("Arial", 8, "italic")).pack(pady=5)
 
     def log_m(self, m):
         self.log.insert(tk.END, m + "\n"); self.log.see(tk.END); self.root.update_idletasks()
@@ -104,7 +107,6 @@ class RamanApp:
         
         carbon_type, ID_IG, I2D_IG, notes = classify_from_rules(fits["D"], fits["G"], fits["2D"])
 
-        # --- REPRODUCING YOUR ORIGINAL PLOT LAYOUT ---
         fig = plt.figure(figsize=(10, 5))
         ax_spec = fig.add_axes([0.08, 0.12, 0.60, 0.8])
         ax_spec.plot(x, y_corr, color="k", lw=1.2)
@@ -119,7 +121,7 @@ class RamanApp:
         ax_spec.set_ylabel("Intensity (a.u.)")
         ax_spec.set_title(f"Raman spectrum: {fname}")
 
-        # Summary text panel (exactly as you had it)
+        # Summary Text Panel (Side-Border Plotting)
         ax_text = fig.add_axes([0.72, 0.12, 0.26, 0.8]); ax_text.axis("off")
         lines = [f"File: {fname}", f"Laser: {LASER_NM} nm", "", "Band fits:"]
         for name in ["D", "G", "2D"]:
@@ -127,8 +129,8 @@ class RamanApp:
             lines.append(f"  {name}: {f['pos']:.1f} cm⁻¹, FWHM {f['fwhm']:.1f}" if f else f"  {name}: not fitted")
         
         lines.extend(["", f"Type: {carbon_type}"])
-        if not np.isnan(ID_IG): lines.append(f"ID/IG ≈ {ID_IG:.2f} (height)")
-        if not np.isnan(I2D_IG): lines.append(f"I2D/IG ≈ {I2D_IG:.2f} (height)")
+        if not np.isnan(ID_IG): lines.append(f"ID/IG ≈ {ID_IG:.2f}")
+        if not np.isnan(I2D_IG): lines.append(f"I2D/IG ≈ {I2D_IG:.2f}")
         if notes:
             lines.extend(["", "Notes:"])
             for n in notes: lines.append(f"- {n}")
@@ -143,7 +145,7 @@ class RamanApp:
     def start(self):
         files = filedialog.askopenfilenames(title="Select Raman TXT files", filetypes=[("Text files", "*.txt")])
         if not files: return
-        self.log_m(f"--- Starting Batch ({len(files)} files) ---")
+        self.log_m(f"--- Processing Batch ({len(files)} files) ---")
         for f in files:
             try:
                 path = self.run_analysis(f)
@@ -151,7 +153,7 @@ class RamanApp:
             except Exception as e:
                 self.log_m(f"FAILED {os.path.basename(f)}: {e}")
         self.log_m("--- Finished ---")
-        messagebox.showinfo("Complete", "Analysis images saved to data folders.")
+        messagebox.showinfo("Complete", f"Processed {len(files)} files successfully.")
 
 if __name__ == "__main__":
     root = tk.Tk(); app = RamanApp(root); root.mainloop()
