@@ -4,6 +4,9 @@ on:
     tags:
       - 'v*' # Trigger build when you push a tag like v1.0.0
 
+permissions:
+  contents: write # This gives the action permission to create the release
+
 jobs:
   build:
     runs-on: windows-latest
@@ -26,16 +29,16 @@ jobs:
           pip install pyinstaller
 
       - name: Build EXE
-        # This injects the version into the code and names the file
         env:
           APP_VERSION: ${{ steps.vars.outputs.tag }}
         run: |
             pyinstaller --onefile --noconsole --name RamanAnalyzer_${{ steps.vars.outputs.tag }} raman_tool.py
 
-      - name: Release
-        uses: softprops/action-gh-release@v1
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
         with:
           files: dist/RamanAnalyzer_${{ steps.vars.outputs.tag }}.exe
           tag_name: v${{ steps.vars.outputs.tag }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: Release v${{ steps.vars.outputs.tag }}
+          draft: false
+          prerelease: false
