@@ -2,44 +2,37 @@ name: Build Semantic Version EXE
 on:
   push:
     tags:
-      - 'v*' # Builds only when you create a tag starting with 'v'
+      - 'v*'
 
 permissions:
-  contents: write # Necessary to upload the EXE to the Releases page
+  contents: write
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-
-      - name: Extract Version from Tag
+      - name: Extract Version
         id: vars
         run: echo "tag=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
         shell: bash
-
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
-
-      - name: Build EXE with PyInstaller
+      - name: Build EXE
         env:
           APP_VERSION: ${{ steps.vars.outputs.tag }}
         run: |
             pyinstaller --onefile --noconsole --name RamanAnalyzer_${{ steps.vars.outputs.tag }} raman_tool.py
-
-      - name: Create GitHub Release
+      - name: Release
         uses: softprops/action-gh-release@v2
         with:
           files: dist/RamanAnalyzer_${{ steps.vars.outputs.tag }}.exe
           tag_name: v${{ steps.vars.outputs.tag }}
           name: Release v${{ steps.vars.outputs.tag }}
-          draft: false
-          prerelease: false
